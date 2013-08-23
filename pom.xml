@@ -20,6 +20,7 @@
 		<slf4j.version>1.6.4</slf4j.version>
 		<log4j.version>1.2.8</log4j.version>
 		<slf4j-android.version>1.6.1-RC1</slf4j-android.version>
+		<kmf-content-protocol.version>0.0.1-SNAPSHOT</kmf-content-protocol.version>
 
 		<!-- Plugins Versions -->
 		<maven-compiler-plugin.version>1.6</maven-compiler-plugin.version>
@@ -78,6 +79,12 @@
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-android</artifactId>
 			<version>${slf4j-android.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.kurento.kmf</groupId>
+			<artifactId>kmf-content-protocol</artifactId>
+			<version>${kmf-content-protocol.version}</version>
 		</dependency>
 	</dependencies>
 
