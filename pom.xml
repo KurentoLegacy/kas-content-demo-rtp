@@ -21,6 +21,8 @@
 		<log4j.version>1.2.8</log4j.version>
 		<slf4j-android.version>1.6.1-RC1</slf4j-android.version>
 		<kmf-content-protocol.version>0.0.1-SNAPSHOT</kmf-content-protocol.version>
+		<kas-mscontrol.version>1.1.5-SNAPSHOT</kas-mscontrol.version>
+		<jain-sip-ri.version>1.2.76</jain-sip-ri.version>
 
 		<!-- Plugins Versions -->
 		<maven-compiler-plugin.version>1.6</maven-compiler-plugin.version>
@@ -86,6 +88,19 @@
 			<artifactId>kmf-content-protocol</artifactId>
 			<version>${kmf-content-protocol.version}</version>
 		</dependency>
+		<dependency>
+			<groupId>com.kurento.kas</groupId>
+			<artifactId>kas-mscontrol</artifactId>
+			<version>${kas-mscontrol.version}</version>
+		</dependency>
+
+		<!-- It's necessary because kc-mediaspec had it as provided -->
+		<dependency>
+			<groupId>javax.sip</groupId>
+			<artifactId>jain-sip-ri</artifactId>
+			<version>${jain-sip-ri.version}</version>
+			<scope>provided</scope>
+		</dependency>
 	</dependencies>
 
 	<profiles>
@@ -130,7 +145,7 @@
 	</profiles>
 
 	<build>
-		<finalName>${project.artifactId}-${version}</finalName>
+		<finalName>${project.artifactId}-${project.version}</finalName>
 
 		<resources>
 			<resource>
