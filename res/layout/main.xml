@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/main_activity_layout"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:orientation="horizontal" >
+
+    <LinearLayout
+        android:id="@+id/video_receive_surface_container"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentTop="true"
+        android:orientation="horizontal" >
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/video_capture_surface_container"
+        android:layout_width="160dp"
+        android:layout_height="120dp"
+        android:orientation="horizontal"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true" >
+    </LinearLayout>
+
+    <ImageButton
+        android:id="@+id/main_button_start_session"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/video_receive_surface"
+        android:layout_alignParentBottom="true"
+        android:gravity="center_vertical|center_horizontal"
+        android:onClick="startSession"
+        android:src="@drawable/ic_video" />
+
+    <ImageButton
+        android:id="@+id/main_button_terminate_session"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentRight="true"
+        android:enabled="false"
+        android:gravity="center_vertical|center_horizontal"
+        android:onClick="terminateSession"
+        android:src="@android:drawable/ic_delete" />
+
+</RelativeLayout>
