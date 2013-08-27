@@ -41,6 +41,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Preferences -->
+        <activity
+            android:name="com.kurento.apps.android.content.demo.rtp.Preferences"
+            android:label="@string/menu_preferences"
+            android:screenOrientation="landscape" >
+        </activity>
     </application>
 
 </manifest>

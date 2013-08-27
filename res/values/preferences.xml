@@ -2,8 +2,10 @@
 <resources>
 
     <!-- Server -->
-    <string name="server_standard_protocol">http</string>
-    <string name="server_address">193.147.51.10</string>
-    <integer name="server_port">8080</integer>
+    <string name="preference_server_standard_protocol_default">http</string>
+    <string name="preference_server_address_default">demo.kurento.com</string>
+    <string name="preference_server_port_default">8080</string>
+
+    <string name="preference_url_demo_default">@string/url_campus_party_rtp</string>
 
 </resources>

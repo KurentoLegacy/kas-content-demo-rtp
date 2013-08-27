@@ -11,11 +11,14 @@ import org.slf4j.LoggerFactory;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -46,6 +49,8 @@ public class MainActivity extends Activity {
 	private static final String STUN_HOST = "";
 	private static final int STUN_PORT = 0;
 	private MediaSessionAndroid mediaSession;
+
+	private static final int SHOW_PREFERENCES = 100;
 
 	private MediaComponentAndroid cameraComponent;
 	private MediaComponentAndroid videoViewerComponent;
@@ -267,6 +272,24 @@ public class MainActivity extends Activity {
 			log.error("Session exception", e);
 		}
 
+	}
+
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+		getMenuInflater().inflate(R.menu.main_menu, menu);
+
+		return super.onCreateOptionsMenu(menu);
+	}
+
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		switch (item.getItemId()) {
+		case (R.id.menu_preferences):
+			Intent localPreferences = new Intent(this, Preferences.class);
+			startActivityForResult(localPreferences, SHOW_PREFERENCES);
+			return true;
+		}
+		return super.onOptionsItemSelected(item);
 	}
 
 }

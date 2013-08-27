@@ -24,6 +24,7 @@ import android.content.Context;
 import android.net.Uri;
 import android.os.AsyncTask;
 
+import com.kurento.apps.android.content.demo.rtp.Preferences;
 import com.kurento.apps.android.content.demo.rtp.R;
 import com.kurento.kmf.content.jsonrpc.GsonUtils;
 import com.kurento.kmf.content.jsonrpc.JsonRpcRequest;
@@ -50,12 +51,10 @@ public class AsyncJsonRpcClient {
 
 				try {
 					URL urlObj = new URL(
-							context.getString(R.string.server_standard_protocol),
-							context.getString(R.string.server_address), context
-									.getResources().getInteger(
-											R.integer.server_port), context
-									.getString(R.string.url_rtp_player));
-					// TODO: more methods to use others URLS
+							context.getString(R.string.preference_server_standard_protocol_default),
+							Preferences.getServerAddress(context), Preferences
+									.getServerPort(context), Preferences
+									.getDemoUrl(context));
 					String url = Uri.parse(urlObj.toString()).buildUpon()
 							.build().toString();
 					HttpHost host = new HttpHost(urlObj.getHost(),

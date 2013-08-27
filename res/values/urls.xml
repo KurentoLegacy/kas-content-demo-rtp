@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="url_rtp_media_service">/content-demo/rtpMediaService</string>
-    <string name="url_rtp_recorder">/content-demo/rtpRecorder</string>
-    <string name="url_rtp_player">/content-demo/rtpPlayer</string>
+    <string name="url_campus_party_rtp">/content-demo/campusPartyRtp</string>
+    <string name="url_campus_party_rtp_filter">/content-demo/campusPartyRtpFilter</string>
+
+    <string-array name="urls_list">
+        <item>@string/url_campus_party_rtp</item>
+        <item>@string/url_campus_party_rtp_filter</item>
+    </string-array>
 
 </resources>

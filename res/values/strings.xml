@@ -1,5 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+
     <string name="app_name">kas-content-demo-rtp</string>
     <string name="version">${project.version}</string>
+
+    <!-- Menu -->
+    <string name="menu_preferences">Preferences</string>
+
+    <!-- Preferences -->
+    <string name="preference_server_address">Server address</string>
+    <string name="preference_server_port">Server port</string>
+    <string name="preference_demo_selector">Demos for content API</string>
+    <string name="preference_demo_selector_summary">Select a demo</string>
+
+    <string-array name="preference_demos_list">
+        <item>Campus Party RTP</item>
+        <item>Campus Party RTP Filter</item>
+    </string-array>
+
 </resources>
