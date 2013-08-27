@@ -20,12 +20,9 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import android.content.Context;
 import android.net.Uri;
 import android.os.AsyncTask;
 
-import com.kurento.apps.android.content.demo.rtp.Preferences;
-import com.kurento.apps.android.content.demo.rtp.R;
 import com.kurento.kmf.content.jsonrpc.GsonUtils;
 import com.kurento.kmf.content.jsonrpc.JsonRpcRequest;
 import com.kurento.kmf.content.jsonrpc.JsonRpcResponse;
@@ -41,29 +38,23 @@ public class AsyncJsonRpcClient {
 		void onError(Exception e);
 	}
 
-	public static void sendRequest(final Context context,
-			final JsonRpcRequest req, final JsonRpcRequestHandler handler)
-			throws IOException {
+	public static void sendRequest(final URL url, final JsonRpcRequest req,
+			final JsonRpcRequestHandler handler) throws IOException {
 		new AsyncTask<Void, Void, Void>() {
 			@Override
 			protected Void doInBackground(Void... params) {
 				String reqJson = GsonUtils.toString(req);
 
 				try {
-					URL urlObj = new URL(
-							context.getString(R.string.preference_server_standard_protocol_default),
-							Preferences.getServerAddress(context), Preferences
-									.getServerPort(context), Preferences
-									.getDemoUrl(context));
-					String url = Uri.parse(urlObj.toString()).buildUpon()
+					String urlStr = Uri.parse(url.toString()).buildUpon()
 							.build().toString();
-					HttpHost host = new HttpHost(urlObj.getHost(),
-							urlObj.getPort(), urlObj.getProtocol());
+					HttpHost host = new HttpHost(url.getHost(), url.getPort(),
+							url.getProtocol());
 
 					HttpClient httpClient = new DefaultHttpClient();
-					HttpPost post = new HttpPost(url);
+					HttpPost post = new HttpPost(urlStr);
 
-					log.debug("url: " + url);
+					log.debug("url: " + urlStr);
 					log.debug("JSON to send: " + reqJson);
 
 					post.setEntity(new StringEntity(reqJson, "UTF8"));

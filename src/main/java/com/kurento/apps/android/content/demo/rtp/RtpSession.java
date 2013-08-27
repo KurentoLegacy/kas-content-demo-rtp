@@ -1,6 +1,7 @@
 package com.kurento.apps.android.content.demo.rtp;
 
 import java.io.IOException;
+import java.net.URL;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -49,6 +50,10 @@ public class RtpSession {
 	private String sessionId = null;
 	private NetworkConnection nc;
 
+	private String serverAddres;
+	private int serverPort;
+	private String demoUrl;
+
 	private boolean request2Terminate = false;
 
 	private SessionExceptionHandler sessionExceptionHandler;
@@ -59,6 +64,10 @@ public class RtpSession {
 		this.context = context;
 		this.uuid = UUID.randomUUID().toString();
 		this.nc = mediaSession.createNetworkConnection();
+
+		serverAddres = Preferences.getServerAddress(context);
+		serverPort = Preferences.getServerPort(context);
+		demoUrl = Preferences.getDemoUrl(context);
 
 		createDefaultHandlers();
 		looperThread.start();
@@ -124,7 +133,10 @@ public class RtpSession {
 				JsonRpcRequest req = JsonRpcRequest.newRequest(
 						JsonRpcConstants.METHOD_TERMINATE, "", sessionId,
 						sequenceNumber.getAndIncrement());
-				AsyncJsonRpcClient.sendRequest(context, req,
+				URL url = new URL(
+						context.getString(R.string.preference_server_standard_protocol_default),
+						serverAddres, serverPort, demoUrl);
+				AsyncJsonRpcClient.sendRequest(url, req,
 						new JsonRpcRequestHandler() {
 
 							@Override
@@ -199,53 +211,51 @@ public class RtpSession {
 				JsonRpcConstants.METHOD_START, sdpOffer, "",
 				sequenceNumber.getAndIncrement(), Constraints.INACTIVE,
 				Constraints.RECVONLY);
-		AsyncJsonRpcClient.sendRequest(context, req,
-				new JsonRpcRequestHandler() {
-					@Override
-					public void onSuccess(JsonRpcResponse resp) {
-						int errorCode = resp.getErrorCode();
-						if (JsonRpcConstants.ERROR_NO_ERROR != errorCode) {
-							String msg = "Error in JSON-RPC response: "
-									+ resp.gerErrorMessage() + "(" + errorCode
-									+ ")";
-							terminate();
-							sessionExceptionHandler.onSessionException(
-									RtpSession.this,
-									new MsControlException(msg));
-							return;
-						}
+		URL url = new URL(
+				context.getString(R.string.preference_server_standard_protocol_default),
+				serverAddres, serverPort, demoUrl);
+		AsyncJsonRpcClient.sendRequest(url, req, new JsonRpcRequestHandler() {
+			@Override
+			public void onSuccess(JsonRpcResponse resp) {
+				int errorCode = resp.getErrorCode();
+				if (JsonRpcConstants.ERROR_NO_ERROR != errorCode) {
+					String msg = "Error in JSON-RPC response: "
+							+ resp.gerErrorMessage() + "(" + errorCode + ")";
+					terminate();
+					sessionExceptionHandler.onSessionException(RtpSession.this,
+							new MsControlException(msg));
+					return;
+				}
 
-						String sdpAnswer = resp.getSdp();
-						log.debug("SDP answer: " + sdpAnswer);
-						setSessionId(resp.getSessionId());
-						log.debug("Session ID: " + getSessionId());
+				String sdpAnswer = resp.getSdp();
+				log.debug("SDP answer: " + sdpAnswer);
+				setSessionId(resp.getSessionId());
+				log.debug("Session ID: " + getSessionId());
 
-						try {
-							nc.getSdpPortManager().addListener(
-									processAnswerListener);
-							nc.getSdpPortManager().processSdpAnswer(
-									SdpConversor.sdp2SessionSpec(sdpAnswer));
-						} catch (SdpException e) {
-							log.error("error: " + e.getMessage(), e);
-							terminate();
-							sessionExceptionHandler.onSessionException(
-									RtpSession.this, e);
-						} catch (MsControlException e) {
-							log.error("error: " + e.getMessage(), e);
-							terminate();
-							sessionExceptionHandler.onSessionException(
-									RtpSession.this, e);
-						}
-					}
+				try {
+					nc.getSdpPortManager().addListener(processAnswerListener);
+					nc.getSdpPortManager().processSdpAnswer(
+							SdpConversor.sdp2SessionSpec(sdpAnswer));
+				} catch (SdpException e) {
+					log.error("error: " + e.getMessage(), e);
+					terminate();
+					sessionExceptionHandler.onSessionException(RtpSession.this,
+							e);
+				} catch (MsControlException e) {
+					log.error("error: " + e.getMessage(), e);
+					terminate();
+					sessionExceptionHandler.onSessionException(RtpSession.this,
+							e);
+				}
+			}
 
-					@Override
-					public void onError(Exception e) {
-						log.error("Exception sending request", e);
-						terminate();
-						sessionExceptionHandler.onSessionException(
-								RtpSession.this, e);
-					}
-				});
+			@Override
+			public void onError(Exception e) {
+				log.error("Exception sending request", e);
+				terminate();
+				sessionExceptionHandler.onSessionException(RtpSession.this, e);
+			}
+		});
 	}
 
 	private MediaEventListener<SdpPortManagerEvent> processAnswerListener = new MediaEventListener<SdpPortManagerEvent>() {
