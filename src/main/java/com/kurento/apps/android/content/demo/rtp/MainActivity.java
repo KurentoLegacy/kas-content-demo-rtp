@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.BitmapFactory;
@@ -323,10 +324,22 @@ public class MainActivity extends Activity {
 	private class SessionExceptionHandlerImpl implements
 			SessionExceptionHandler {
 		@Override
-		public void onSessionException(RtpSession session, Exception e) {
+		public void onSessionException(RtpSession session, final Exception e) {
 			log.error("Session exception", e);
-		}
 
+			runOnUiThread(new Runnable() {
+				public void run() {
+					AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(
+							MainActivity.this);
+					alertDialogBuilder.setTitle("Error in RTP Session");
+					alertDialogBuilder.setMessage(e.getMessage());
+					AlertDialog alertDialog = alertDialogBuilder.create();
+					alertDialog.show();
+
+					terminateSession();
+				}
+			});
+		}
 	}
 
 	@Override
