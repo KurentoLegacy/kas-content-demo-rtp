@@ -38,11 +38,12 @@
 
         <ImageView
             android:id="@+id/main_button_start_session"
-            android:layout_width="70dp"
-            android:layout_height="70dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:layout_centerInParent="true"
             android:gravity="center_vertical|center_horizontal"
             android:onClick="startSession"
+            android:padding="10dp"
             android:src="@android:drawable/ic_media_play" />
 
         <ProgressBar
@@ -80,25 +81,32 @@
             <ImageView
                 android:id="@+id/main_button_options"
                 style="?buttonBarButtonStyle"
-                android:layout_width="70dp"
-                android:layout_height="70dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:layout_alignParentRight="true"
+                android:layout_centerInParent="true"
+                android:layout_marginBottom="16dp"
                 android:layout_marginRight="16dp"
                 android:enabled="false"
                 android:onClick="showMenu"
+                android:padding="10dip"
                 android:src="@android:drawable/ic_menu_preferences" />
 
             <ImageView
                 android:id="@+id/main_button_terminate_session"
                 style="?buttonBarButtonStyle"
-                android:layout_width="70dip"
-                android:layout_height="70dip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:layout_alignParentTop="true"
+                android:layout_centerInParent="true"
+                android:layout_marginBottom="16dp"
                 android:layout_marginRight="16dp"
                 android:layout_toLeftOf="@+id/main_button_options"
                 android:enabled="false"
                 android:onClick="terminateSession"
-                android:src="@android:drawable/ic_menu_close_clear_cancel" />
+                android:padding="10dip"
+                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                android:visibility="invisible" />
         </RelativeLayout>
     </FrameLayout>
 

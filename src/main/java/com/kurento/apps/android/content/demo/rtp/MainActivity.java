@@ -397,7 +397,12 @@ public class MainActivity extends Activity {
 				.setOnVisibilityChangeListener(new SystemUiHiderBase.OnVisibilityChangeListener() {
 					@Override
 					public void onVisibilityChange(boolean visible) {
-						controlsView.setVisibility(View.VISIBLE);
+						if (visible) {
+							controlsView.setVisibility(View.VISIBLE);
+						} else {
+							controlsView.setVisibility(View.INVISIBLE);
+						}
+
 						if (visible && AUTO_HIDE) {
 							// Schedule a hide().
 							delayedHide(AUTO_HIDE_DELAY_MILLIS);
