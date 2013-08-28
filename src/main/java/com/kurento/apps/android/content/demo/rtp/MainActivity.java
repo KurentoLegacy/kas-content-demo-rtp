@@ -119,13 +119,8 @@ public class MainActivity extends Activity {
 	@Override
 	protected void onPause() {
 		mWakeLock.release();
-		super.onPause();
-	}
-
-	@Override
-	protected void onDestroy() {
 		terminateSession();
-		super.onDestroy();
+		super.onPause();
 	}
 
 	public void startSession(View v) {
