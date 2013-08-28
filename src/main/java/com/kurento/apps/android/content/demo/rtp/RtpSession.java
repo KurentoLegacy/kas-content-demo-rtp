@@ -210,7 +210,7 @@ public class RtpSession {
 		JsonRpcRequest req = JsonRpcRequest.newRequest(
 				JsonRpcConstants.METHOD_START, sdpOffer, "",
 				sequenceNumber.getAndIncrement(), Constraints.INACTIVE,
-				Constraints.RECVONLY);
+				Constraints.SENDRECV);
 		URL url = new URL(
 				context.getString(R.string.preference_server_standard_protocol_default),
 				serverAddres, serverPort, demoUrl);

@@ -237,7 +237,7 @@ public class MainActivity extends Activity {
 
 		Map<MediaType, Direction> mediaDirection = new HashMap<MediaType, Direction>();
 		mediaDirection.put(MediaType.AUDIO, Direction.INACTIVE);
-		mediaDirection.put(MediaType.VIDEO, Direction.SENDONLY);
+		mediaDirection.put(MediaType.VIDEO, Direction.SENDRECV);
 		Value<Map<MediaType, Direction>> mediaDirectionValue = new Value<Map<MediaType, Direction>>(
 				mediaDirection);
 		mediaParams.put(MediaSessionAndroid.STREAMS_MODES, mediaDirectionValue);
