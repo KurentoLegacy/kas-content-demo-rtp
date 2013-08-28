@@ -1,47 +1,105 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/main_activity_layout"
-    android:layout_width="fill_parent"
-    android:layout_height="fill_parent"
-    android:orientation="horizontal" >
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main_background_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000"
+    tools:context=".FullscreenActivity" >
 
-    <LinearLayout
-        android:id="@+id/video_receive_surface_container"
+    <ImageView
+        android:id="@+id/theater_layout"
         android:layout_width="fill_parent"
-        android:layout_height="fill_parent"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentTop="true"
-        android:orientation="horizontal" >
-    </LinearLayout>
+        android:layout_height="fill_parent" />
 
-    <LinearLayout
-        android:id="@+id/video_capture_surface_container"
-        android:layout_width="160dp"
-        android:layout_height="120dp"
-        android:orientation="horizontal"
-        android:layout_alignParentBottom="true"
-        android:layout_alignParentRight="true" >
-    </LinearLayout>
+    <RelativeLayout
+        android:id="@+id/main_activity_layout"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent" >
 
-    <ImageButton
-        android:id="@+id/main_button_start_session"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignLeft="@+id/video_receive_surface"
-        android:layout_alignParentBottom="true"
-        android:gravity="center_vertical|center_horizontal"
-        android:onClick="startSession"
-        android:src="@drawable/ic_video" />
+        <LinearLayout
+            android:id="@+id/video_receive_surface_container"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentTop="true"
+            android:orientation="horizontal" >
+        </LinearLayout>
 
-    <ImageButton
-        android:id="@+id/main_button_terminate_session"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentRight="true"
-        android:enabled="false"
-        android:gravity="center_vertical|center_horizontal"
-        android:onClick="terminateSession"
-        android:src="@android:drawable/ic_delete" />
+        <LinearLayout
+            android:id="@+id/video_capture_surface_container"
+            android:layout_width="160dp"
+            android:layout_height="120dp"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentTop="true"
+            android:layout_margin="16dip"
+            android:orientation="horizontal" >
+        </LinearLayout>
 
-</RelativeLayout>
+        <ImageView
+            android:id="@+id/main_button_start_session"
+            android:layout_width="70dp"
+            android:layout_height="70dp"
+            android:layout_centerInParent="true"
+            android:gravity="center_vertical|center_horizontal"
+            android:onClick="startSession"
+            android:src="@android:drawable/ic_media_play" />
+
+        <ProgressBar
+            android:id="@+id/progressBar1"
+            style="?android:attr/progressBarStyleLarge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:visibility="gone" />
+    </RelativeLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fitsSystemWindows="true" >
+
+        <RelativeLayout
+            android:id="@+id/fullscreen_content_controls"
+            style="?buttonBarStyle"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|right"
+            tools:ignore="UselessParent" >
+
+            <ImageView
+                android:id="@+id/campus"
+                style="?buttonBarStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentLeft="true"
+                android:layout_centerInParent="true"
+                android:layout_marginLeft="16dp"
+                tools:ignore="UselessParent" />
+
+            <ImageView
+                android:id="@+id/main_button_options"
+                style="?buttonBarButtonStyle"
+                android:layout_width="70dp"
+                android:layout_height="70dp"
+                android:layout_alignParentRight="true"
+                android:layout_marginRight="16dp"
+                android:enabled="false"
+                android:onClick="showMenu"
+                android:src="@android:drawable/ic_menu_preferences" />
+
+            <ImageView
+                android:id="@+id/main_button_terminate_session"
+                style="?buttonBarButtonStyle"
+                android:layout_width="70dip"
+                android:layout_height="70dip"
+                android:layout_alignParentTop="true"
+                android:layout_marginRight="16dp"
+                android:layout_toLeftOf="@+id/main_button_options"
+                android:enabled="false"
+                android:onClick="terminateSession"
+                android:src="@android:drawable/ic_menu_close_clear_cancel" />
+        </RelativeLayout>
+    </FrameLayout>
+
+</FrameLayout>

@@ -12,9 +12,13 @@ import org.slf4j.LoggerFactory;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
+import android.graphics.drawable.BitmapDrawable;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
 import android.view.Menu;
@@ -23,9 +27,15 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 
 import com.kurento.apps.android.content.demo.rtp.RtpSession.SessionEstablishedHandler;
 import com.kurento.apps.android.content.demo.rtp.RtpSession.SessionExceptionHandler;
+import com.kurento.apps.android.content.demo.rtp.hider.SystemUiHiderBase;
+import com.kurento.apps.android.content.demo.rtp.hider.SystemUiHider;
 import com.kurento.commons.config.Parameters;
 import com.kurento.commons.config.Value;
 import com.kurento.kas.media.codecs.AudioCodecType;
@@ -61,6 +71,12 @@ public class MainActivity extends Activity {
 
 	private WakeLock mWakeLock = null;
 
+	private static final boolean AUTO_HIDE = true;
+	private static final int AUTO_HIDE_DELAY_MILLIS = 3000;
+	private static final boolean TOGGLE_ON_CLICK = true;
+	private static final int HIDER_FLAGS = SystemUiHiderBase.FLAG_HIDE_NAVIGATION;
+	private SystemUiHiderBase mSystemUiHider;
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -71,6 +87,16 @@ public class MainActivity extends Activity {
 		getWindow().requestFeature(Window.FEATURE_ACTION_BAR_OVERLAY);
 		setContentView(R.layout.main);
 
+		((ImageView) findViewById(R.id.theater_layout))
+				.setBackgroundDrawable(new BitmapDrawable(getResources(),
+						BitmapFactory.decodeStream(getResources()
+								.openRawResource(R.drawable.bg_screen))));
+
+		((ImageView) findViewById(R.id.campus))
+				.setBackgroundDrawable(new BitmapDrawable(getResources(),
+						BitmapFactory.decodeStream(getResources()
+								.openRawResource(R.drawable.campus))));
+
 		try {
 			createMediaSession();
 		} catch (MsControlException e) {
@@ -79,6 +105,8 @@ public class MainActivity extends Activity {
 
 		PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
 		mWakeLock = pm.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK, "screen");
+
+		createTheMagic();
 	}
 
 	@Override
@@ -106,7 +134,21 @@ public class MainActivity extends Activity {
 			session.setSessionExceptionHandler(sessionExceptionHandler);
 			session.start();
 			findViewById(R.id.main_button_start_session).setEnabled(false);
+			findViewById(R.id.main_button_start_session).setVisibility(
+					View.GONE);
 			findViewById(R.id.main_button_terminate_session).setEnabled(true);
+			findViewById(R.id.main_button_terminate_session).setVisibility(
+					View.VISIBLE);
+			findViewById(R.id.progressBar1).setVisibility(View.VISIBLE);
+
+			Animation myFadeInAnimation = AnimationUtils.loadAnimation(
+					getApplicationContext(), R.anim.make_it_big);
+			myFadeInAnimation.setFillAfter(true);
+			((FrameLayout) findViewById(R.id.main_background_layout))
+					.setBackgroundColor(Color.WHITE);
+			((ImageView) findViewById(R.id.theater_layout))
+					.startAnimation(myFadeInAnimation);
+
 		} catch (MsControlException e) {
 			log.error("Cannot start", e);
 		}
@@ -117,6 +159,14 @@ public class MainActivity extends Activity {
 	}
 
 	private void terminateSession() {
+		Animation myFadeInAnimation = AnimationUtils.loadAnimation(
+				getApplicationContext(), R.anim.make_it_small);
+		myFadeInAnimation.setFillAfter(true);
+		((FrameLayout) findViewById(R.id.main_background_layout))
+				.setBackgroundColor(Color.BLACK);
+		((ImageView) findViewById(R.id.theater_layout))
+				.startAnimation(myFadeInAnimation);
+
 		if (cameraComponent != null) {
 			cameraComponent.stop();
 			cameraComponent.release();
@@ -134,7 +184,13 @@ public class MainActivity extends Activity {
 		}
 
 		findViewById(R.id.main_button_terminate_session).setEnabled(false);
+		findViewById(R.id.main_button_terminate_session).setVisibility(
+				View.GONE);
+
 		findViewById(R.id.main_button_start_session).setEnabled(true);
+		findViewById(R.id.main_button_start_session)
+				.setVisibility(View.VISIBLE);
+		findViewById(R.id.progressBar1).setVisibility(View.GONE);
 	}
 
 	private void createMediaSession() throws MsControlException {
@@ -251,22 +307,22 @@ public class MainActivity extends Activity {
 
 	private class SessionEstablishedHandlerImpl implements
 			SessionEstablishedHandler {
-
 		@Override
 		public void onEstablishedSession(final RtpSession session) {
 			// FIXME: use intents
 			runOnUiThread(new Runnable() {
 				public void run() {
+					findViewById(R.id.progressBar1).setVisibility(View.GONE);
+					((FrameLayout) findViewById(R.id.main_background_layout))
+							.setBackgroundColor(Color.BLACK);
 					initMedia(session.getNetworkConnection());
 				}
 			});
 		}
-
 	}
 
 	private class SessionExceptionHandlerImpl implements
 			SessionExceptionHandler {
-
 		@Override
 		public void onSessionException(RtpSession session, Exception e) {
 			log.error("Session exception", e);
@@ -281,6 +337,11 @@ public class MainActivity extends Activity {
 		return super.onCreateOptionsMenu(menu);
 	}
 
+	public void showMenu(View v) {
+		Intent localPreferences = new Intent(this, Preferences.class);
+		startActivityForResult(localPreferences, SHOW_PREFERENCES);
+	}
+
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
@@ -292,4 +353,64 @@ public class MainActivity extends Activity {
 		return super.onOptionsItemSelected(item);
 	}
 
+	/**
+	 * Schedules a call to hide() in [delay] milliseconds, canceling any
+	 * previously scheduled calls.
+	 */
+	private void delayedHide(int delayMillis) {
+		mHideHandler.removeCallbacks(mHideRunnable);
+		mHideHandler.postDelayed(mHideRunnable, delayMillis);
+	}
+
+	/* Hider source code needs */
+	@Override
+	protected void onPostCreate(Bundle savedInstanceState) {
+		super.onPostCreate(savedInstanceState);
+
+		// Trigger the initial hide() shortly after the activity has been
+		// created, to briefly hint to the user that UI controls
+		// are available.
+		delayedHide(100);
+	}
+
+	private final Handler mHideHandler = new Handler();
+	private final Runnable mHideRunnable = new Runnable() {
+		@Override
+		public void run() {
+			mSystemUiHider.hide();
+		}
+	};
+
+	private void createTheMagic() {
+		final View controlsView = findViewById(R.id.fullscreen_content_controls);
+		final View contentView = findViewById(R.id.main_activity_layout);
+
+		// Set up an instance of SystemUiHider to control the system UI for
+		// this activity.
+		mSystemUiHider = new SystemUiHider(this, contentView, HIDER_FLAGS);
+		mSystemUiHider.setup();
+		mSystemUiHider
+				.setOnVisibilityChangeListener(new SystemUiHiderBase.OnVisibilityChangeListener() {
+					@Override
+					public void onVisibilityChange(boolean visible) {
+						controlsView.setVisibility(View.VISIBLE);
+						if (visible && AUTO_HIDE) {
+							// Schedule a hide().
+							delayedHide(AUTO_HIDE_DELAY_MILLIS);
+						}
+					}
+				});
+
+		// Set up the user interaction to manually show or hide the system UI
+		contentView.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View view) {
+				if (TOGGLE_ON_CLICK) {
+					mSystemUiHider.toggle();
+				} else {
+					mSystemUiHider.show();
+				}
+			}
+		});
+	}
 }
