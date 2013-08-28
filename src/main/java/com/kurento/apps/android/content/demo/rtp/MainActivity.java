@@ -34,8 +34,8 @@ import android.widget.ImageView;
 
 import com.kurento.apps.android.content.demo.rtp.RtpSession.SessionEstablishedHandler;
 import com.kurento.apps.android.content.demo.rtp.RtpSession.SessionExceptionHandler;
-import com.kurento.apps.android.content.demo.rtp.hider.SystemUiHiderBase;
 import com.kurento.apps.android.content.demo.rtp.hider.SystemUiHider;
+import com.kurento.apps.android.content.demo.rtp.hider.SystemUiHiderBase;
 import com.kurento.commons.config.Parameters;
 import com.kurento.commons.config.Value;
 import com.kurento.kas.media.codecs.AudioCodecType;
@@ -58,6 +58,7 @@ public class MainActivity extends Activity {
 
 	private static final String STUN_HOST = "";
 	private static final int STUN_PORT = 0;
+	private static final int MAX_BANDWIDTH = 600000;
 	private MediaSessionAndroid mediaSession;
 
 	private static final int SHOW_PREFERENCES = 100;
@@ -223,6 +224,9 @@ public class MainActivity extends Activity {
 
 		Value<Integer> stunPortValue = new Value<Integer>(STUN_PORT);
 		mediaParams.put(MediaSessionAndroid.STUN_PORT, stunPortValue);
+
+		Value<Integer> maxBandwidthValue = new Value<Integer>(MAX_BANDWIDTH);
+		mediaParams.put(MediaSessionAndroid.MAX_BANDWIDTH, maxBandwidthValue);
 
 		ArrayList<AudioCodecType> audioCodecs = new ArrayList<AudioCodecType>();
 		Value<List<AudioCodecType>> audioCodecsValue = new Value<List<AudioCodecType>>(
