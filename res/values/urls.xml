@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="url_campus_party_rtp">/content-demo/campusPartyRtp</string>
-    <string name="url_campus_party_rtp_filter">/content-demo/campusPartyRtpFilter</string>
+    <string name="url_campus_party_rtp_zbar">/content-demo/cpRtpZbar</string>
+    <string name="url_campus_party_rtp_jack">/content-demo/cpRtpJack</string>
 
     <string-array name="urls_list">
-        <item>@string/url_campus_party_rtp</item>
-        <item>@string/url_campus_party_rtp_filter</item>
+        <item>@string/url_campus_party_rtp_zbar</item>
+        <item>@string/url_campus_party_rtp_jack</item>
     </string-array>
 
 </resources>

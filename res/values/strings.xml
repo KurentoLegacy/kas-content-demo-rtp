@@ -14,8 +14,8 @@
     <string name="preference_demo_selector_summary">Select a demo</string>
 
     <string-array name="preference_demos_list">
-        <item>Campus Party RTP</item>
-        <item>Campus Party RTP Filter</item>
+        <item>Campus Party RTP ZBAR</item>
+        <item>Campus Party RTP Jack Daver</item>
     </string-array>
 
 </resources>

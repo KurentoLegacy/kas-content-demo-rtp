@@ -6,6 +6,6 @@
     <string name="preference_server_address_default">demo.kurento.com</string>
     <string name="preference_server_port_default">8080</string>
 
-    <string name="preference_url_demo_default">@string/url_campus_party_rtp</string>
+    <string name="preference_url_demo_default">@string/url_campus_party_rtp_zbar</string>
 
 </resources>
