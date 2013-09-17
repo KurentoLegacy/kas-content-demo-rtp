@@ -12,6 +12,8 @@
     <string name="preference_server_port">Server port</string>
     <string name="preference_demo_selector">Demos for content API</string>
     <string name="preference_demo_selector_summary">Select a demo</string>
+    <string name="preference_custom_demo_item">Custom</string>
+    <string name="preference_custom_demo_url_title">Custom demo URL</string>
 
     <string-array name="preference_demos_list">
         <item>Campus Party RTP ZBAR</item>
