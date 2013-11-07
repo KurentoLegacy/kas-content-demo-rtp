@@ -30,9 +30,11 @@ import com.kurento.apps.android.content.demo.rtp.jsonrpc.AsyncJsonRpcClient;
 import com.kurento.apps.android.content.demo.rtp.jsonrpc.AsyncJsonRpcClient.JsonRpcRequestHandler;
 import com.kurento.commons.media.format.conversor.SdpConversor;
 import com.kurento.kmf.content.jsonrpc.Constraints;
-import com.kurento.kmf.content.jsonrpc.JsonRpcConstants;
 import com.kurento.kmf.content.jsonrpc.JsonRpcRequest;
 import com.kurento.kmf.content.jsonrpc.JsonRpcResponse;
+import com.kurento.kmf.content.jsonrpc.JsonRpcResponseError;
+import com.kurento.kmf.content.jsonrpc.param.JsonRpcConstraints;
+import com.kurento.kmf.content.jsonrpc.result.JsonRpcResponseResult;
 import com.kurento.mediaspec.SessionSpec;
 import com.kurento.mscontrol.commons.EventType;
 import com.kurento.mscontrol.commons.MediaErr;
@@ -144,8 +146,8 @@ public class RtpSession {
 			}
 
 			try {
-				JsonRpcRequest req = JsonRpcRequest.newRequest(
-						JsonRpcConstants.METHOD_TERMINATE, "", sessionId,
+				JsonRpcRequest req = JsonRpcRequest.newTerminateRequest(0,
+						"Terminate RTP session", sessionId,
 						sequenceNumber.getAndIncrement());
 				URL url = new URL(
 						context.getString(R.string.preference_server_standard_protocol_default),
@@ -221,29 +223,30 @@ public class RtpSession {
 
 	private void sendRpcStart(String sdpOffer) throws IOException {
 		// TODO: configure from media session
-		JsonRpcRequest req = JsonRpcRequest.newRequest(
-				JsonRpcConstants.METHOD_START, sdpOffer, "",
-				sequenceNumber.getAndIncrement(), Constraints.INACTIVE,
-				Constraints.SENDRECV);
+		JsonRpcRequest req = JsonRpcRequest.newStartRequest(sdpOffer,
+				new JsonRpcConstraints(Constraints.SENDRECV.toString(),
+						Constraints.INACTIVE.toString()), sequenceNumber
+						.getAndIncrement());
 		URL url = new URL(
 				context.getString(R.string.preference_server_standard_protocol_default),
 				serverAddres, serverPort, demoUrl);
 		AsyncJsonRpcClient.sendRequest(url, req, new JsonRpcRequestHandler() {
 			@Override
 			public void onSuccess(JsonRpcResponse resp) {
-				int errorCode = resp.getErrorCode();
-				if (JsonRpcConstants.ERROR_NO_ERROR != errorCode) {
+				if (resp.isError()) {
+					JsonRpcResponseError error = resp.getResponseError();
 					String msg = "Error in JSON-RPC response: "
-							+ resp.gerErrorMessage() + "(" + errorCode + ")";
+							+ error.getMessage() + "(" + error.getCode() + ")";
 					terminate();
 					sessionExceptionHandler.onSessionException(RtpSession.this,
 							new MsControlException(msg));
 					return;
 				}
 
-				String sdpAnswer = resp.getSdp();
+				JsonRpcResponseResult result = resp.getResponseResult();
+				String sdpAnswer = result.getSdp();
 				log.debug("SDP answer: " + sdpAnswer);
-				setSessionId(resp.getSessionId());
+				setSessionId(result.getSessionId());
 				log.debug("Session ID: " + getSessionId());
 
 				try {
