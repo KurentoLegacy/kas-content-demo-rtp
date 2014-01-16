@@ -20,7 +20,7 @@
 		<slf4j.version>1.6.4</slf4j.version>
 		<log4j.version>1.2.8</log4j.version>
 		<slf4j-android.version>1.6.1-RC1</slf4j-android.version>
-		<kmf-content-protocol.version>0.0.1-SNAPSHOT</kmf-content-protocol.version>
+		<kmf-content-protocol.version>1.0.0</kmf-content-protocol.version>
 		<kas-mscontrol.version>1.1.5-SNAPSHOT</kas-mscontrol.version>
 		<jain-sip-ri.version>1.2.76</jain-sip-ri.version>
 
