@@ -15,9 +15,6 @@
 package com.kurento.apps.android.content.demo.rtp;
 
 import java.io.IOException;
-import java.net.URL;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.sdp.SdpException;
 
@@ -26,15 +23,7 @@ import org.slf4j.LoggerFactory;
 
 import android.content.Context;
 
-import com.kurento.apps.android.content.demo.rtp.jsonrpc.AsyncJsonRpcClient;
-import com.kurento.apps.android.content.demo.rtp.jsonrpc.AsyncJsonRpcClient.JsonRpcRequestHandler;
 import com.kurento.commons.media.format.conversor.SdpConversor;
-import com.kurento.kmf.content.jsonrpc.Constraints;
-import com.kurento.kmf.content.jsonrpc.JsonRpcRequest;
-import com.kurento.kmf.content.jsonrpc.JsonRpcResponse;
-import com.kurento.kmf.content.jsonrpc.JsonRpcResponseError;
-import com.kurento.kmf.content.jsonrpc.param.JsonRpcConstraints;
-import com.kurento.kmf.content.jsonrpc.result.JsonRpcResponseResult;
 import com.kurento.mediaspec.SessionSpec;
 import com.kurento.mscontrol.commons.EventType;
 import com.kurento.mscontrol.commons.MediaErr;
@@ -44,143 +33,55 @@ import com.kurento.mscontrol.commons.networkconnection.NetworkConnection;
 import com.kurento.mscontrol.commons.networkconnection.SdpPortManagerEvent;
 import com.kurento.mscontrol.kas.MediaSessionAndroid;
 
-public class RtpSession {
+public class RtpSession extends MediaSession {
 
 	private static final Logger log = LoggerFactory.getLogger(RtpSession.class
 			.getSimpleName());
 
-	public interface SessionExceptionHandler {
-		public void onSessionException(RtpSession session, Exception e);
-	}
-
-	public interface SessionEstablishedHandler {
-		public void onEstablishedSession(RtpSession session);
-	}
-
-	private final LooperThread looperThread = new LooperThread();
-	private final Context context;
-
-	private static final AtomicInteger sequenceNumber = new AtomicInteger(0);
-
-	private String uuid;
-	private String sessionId = null;
 	private NetworkConnection nc;
-
-	private String serverAddres;
-	private int serverPort;
-	private String demoUrl;
-
-	private boolean request2Terminate = false;
-
-	private SessionExceptionHandler sessionExceptionHandler;
-	private SessionEstablishedHandler sessionEstablishedHandler;
 
 	RtpSession(Context context, MediaSessionAndroid mediaSession)
 			throws MsControlException {
-		this.context = context;
-		this.uuid = UUID.randomUUID().toString();
+		super(context);
+
 		this.nc = mediaSession.createNetworkConnection();
-
-		serverAddres = Preferences.getServerAddress(context);
-		serverPort = Preferences.getServerPort(context);
-		demoUrl = Preferences.getDemoUrl(context);
-
-		createDefaultHandlers();
-		looperThread.start();
-	}
-
-	public String getUuid() {
-		return uuid;
-	}
-
-	public synchronized String getSessionId() {
-		return sessionId;
-	}
-
-	public synchronized void setSessionId(String sessionId) {
-		this.sessionId = sessionId;
 	}
 
 	public NetworkConnection getNetworkConnection() {
 		return nc;
 	}
 
-	public void setSessionEstablishedHandler(
-			SessionEstablishedHandler sessionEstablishedHandler) {
-		this.sessionEstablishedHandler = sessionEstablishedHandler;
-	}
-
-	public void setSessionExceptionHandler(
-			SessionExceptionHandler sessionExceptionHandler) {
-		this.sessionExceptionHandler = sessionExceptionHandler;
-	}
-
-	private void startSync() throws MsControlException {
-		nc.getSdpPortManager().addListener(generateOfferListener);
-		nc.getSdpPortManager().generateSdpOffer();
-	}
-
-	public void start() {
-		looperThread.post(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					startSync();
-				} catch (MsControlException e) {
-					log.error("Cannot start", e);
-					sessionExceptionHandler.onSessionException(RtpSession.this,
-							e);
-				}
-			}
-		});
-	}
-
-	private void terminateSync() {
-		nc.release();
-
-		synchronized (this) {
-			request2Terminate = true;
-			if (sessionId == null) {
-				log.info("The session with " + uuid + " is not stablished yet");
-				return;
-			}
-
-			try {
-				JsonRpcRequest req = JsonRpcRequest.newTerminateRequest(0,
-						"Terminate RTP session", sessionId,
-						sequenceNumber.getAndIncrement());
-				URL url = new URL(
-						context.getString(R.string.preference_server_standard_protocol_default),
-						serverAddres, serverPort, demoUrl);
-				AsyncJsonRpcClient.sendRequest(url, req,
-						new JsonRpcRequestHandler() {
-
-							@Override
-							public void onSuccess(JsonRpcResponse resp) {
-								log.debug("Terminate on success");
-							}
-
-							@Override
-							public void onError(Exception e) {
-								log.error("Exception sending request", e);
-							}
-						});
-
-			} catch (IOException e) {
-				log.error("error: " + e.getMessage(), e);
-			}
-
-			looperThread.quit();
+	@Override
+	protected void startSync() {
+		try {
+			nc.getSdpPortManager().addListener(generateOfferListener);
+			nc.getSdpPortManager().generateSdpOffer();
+		} catch (MsControlException e) {
+			log.error("Cannot start", e);
+			sessionExceptionHandler.onSessionException(RtpSession.this, e);
 		}
 	}
 
-	public void terminate() {
-		looperThread.post(new Runnable() {
-			@Override
-			public void run() {
-				terminateSync();
-			}
-		});
+	@Override
+	protected void releaseMedia() {
+		nc.release();
+	}
+
+	@Override
+	protected void processSdpAnswer(String sdpAnswer) {
+		try {
+			nc.getSdpPortManager().addListener(processAnswerListener);
+			nc.getSdpPortManager().processSdpAnswer(
+					SdpConversor.sdp2SessionSpec(sdpAnswer));
+		} catch (SdpException e) {
+			log.error("error: " + e.getMessage(), e);
+			terminate();
+			sessionExceptionHandler.onSessionException(this, e);
+		} catch (MsControlException e) {
+			log.error("error: " + e.getMessage(), e);
+			terminate();
+			sessionExceptionHandler.onSessionException(this, e);
+		}
 	}
 
 	private MediaEventListener<SdpPortManagerEvent> generateOfferListener = new MediaEventListener<SdpPortManagerEvent>() {
@@ -220,60 +121,6 @@ public class RtpSession {
 
 		}
 	};
-
-	private void sendRpcStart(String sdpOffer) throws IOException {
-		// TODO: configure from media session
-		JsonRpcRequest req = JsonRpcRequest.newStartRequest(sdpOffer,
-				new JsonRpcConstraints(Constraints.SENDRECV.toString(),
-						Constraints.INACTIVE.toString()), sequenceNumber
-						.getAndIncrement());
-		URL url = new URL(
-				context.getString(R.string.preference_server_standard_protocol_default),
-				serverAddres, serverPort, demoUrl);
-		AsyncJsonRpcClient.sendRequest(url, req, new JsonRpcRequestHandler() {
-			@Override
-			public void onSuccess(JsonRpcResponse resp) {
-				if (resp.isError()) {
-					JsonRpcResponseError error = resp.getResponseError();
-					String msg = "Error in JSON-RPC response: "
-							+ error.getMessage() + "(" + error.getCode() + ")";
-					terminate();
-					sessionExceptionHandler.onSessionException(RtpSession.this,
-							new MsControlException(msg));
-					return;
-				}
-
-				JsonRpcResponseResult result = resp.getResponseResult();
-				String sdpAnswer = result.getSdp();
-				log.debug("SDP answer: " + sdpAnswer);
-				setSessionId(result.getSessionId());
-				log.debug("Session ID: " + getSessionId());
-
-				try {
-					nc.getSdpPortManager().addListener(processAnswerListener);
-					nc.getSdpPortManager().processSdpAnswer(
-							SdpConversor.sdp2SessionSpec(sdpAnswer));
-				} catch (SdpException e) {
-					log.error("error: " + e.getMessage(), e);
-					terminate();
-					sessionExceptionHandler.onSessionException(RtpSession.this,
-							e);
-				} catch (MsControlException e) {
-					log.error("error: " + e.getMessage(), e);
-					terminate();
-					sessionExceptionHandler.onSessionException(RtpSession.this,
-							e);
-				}
-			}
-
-			@Override
-			public void onError(Exception e) {
-				log.error("Exception sending request", e);
-				terminate();
-				sessionExceptionHandler.onSessionException(RtpSession.this, e);
-			}
-		});
-	}
 
 	private MediaEventListener<SdpPortManagerEvent> processAnswerListener = new MediaEventListener<SdpPortManagerEvent>() {
 		@Override
@@ -329,21 +176,5 @@ public class RtpSession {
 			}
 		}
 	};
-
-	private void createDefaultHandlers() {
-		sessionEstablishedHandler = new SessionEstablishedHandler() {
-			@Override
-			public void onEstablishedSession(RtpSession session) {
-				log.info("Default onEstablishedSession");
-			}
-		};
-
-		sessionExceptionHandler = new SessionExceptionHandler() {
-			@Override
-			public void onSessionException(RtpSession session, Exception e) {
-				log.info("Default onSessionException");
-			}
-		};
-	}
 
 }

@@ -47,8 +47,8 @@ import android.view.animation.AnimationUtils;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 
-import com.kurento.apps.android.content.demo.rtp.RtpSession.SessionEstablishedHandler;
-import com.kurento.apps.android.content.demo.rtp.RtpSession.SessionExceptionHandler;
+import com.kurento.apps.android.content.demo.rtp.MediaSession.SessionEstablishedHandler;
+import com.kurento.apps.android.content.demo.rtp.MediaSession.SessionExceptionHandler;
 import com.kurento.apps.android.content.demo.rtp.hider.SystemUiHider;
 import com.kurento.apps.android.content.demo.rtp.hider.SystemUiHiderBase;
 import com.kurento.commons.config.Parameters;
@@ -81,7 +81,7 @@ public class MainActivity extends Activity {
 	private MediaComponentAndroid cameraComponent;
 	private MediaComponentAndroid videoViewerComponent;
 
-	private RtpSession session;
+	private MediaSession session;
 	private SessionEstablishedHandler sessionEstablishedHandler = new SessionEstablishedHandlerImpl();
 	private SessionExceptionHandler sessionExceptionHandler = new SessionExceptionHandlerImpl();
 
@@ -292,9 +292,10 @@ public class MainActivity extends Activity {
 		}
 	}
 
-	private void initMedia(NetworkConnection nc) {
+	private void initRtpMedia(RtpSession session) {
 		createMediaComponents();
 
+		NetworkConnection nc = session.getNetworkConnection();
 		try {
 			log.debug("Video joinable stream: "
 					+ nc.getJoinableStream(StreamType.video));
@@ -316,20 +317,24 @@ public class MainActivity extends Activity {
 		} catch (MsControlException e) {
 			log.error("Error initiating media", e);
 		}
-
 	}
 
 	private class SessionEstablishedHandlerImpl implements
 			SessionEstablishedHandler {
 		@Override
-		public void onEstablishedSession(final RtpSession session) {
+		public void onEstablishedSession(final MediaSession session) {
 			// FIXME: use intents
 			runOnUiThread(new Runnable() {
 				public void run() {
 					findViewById(R.id.progressBar1).setVisibility(View.GONE);
 					((FrameLayout) findViewById(R.id.main_background_layout))
 							.setBackgroundColor(Color.BLACK);
-					initMedia(session.getNetworkConnection());
+					// TODO: improve
+					if (session instanceof RtpSession) {
+						initRtpMedia((RtpSession) session);
+					} else {
+						log.warn("Media not provided");
+					}
 				}
 			});
 		}
@@ -338,7 +343,7 @@ public class MainActivity extends Activity {
 	private class SessionExceptionHandlerImpl implements
 			SessionExceptionHandler {
 		@Override
-		public void onSessionException(RtpSession session, final Exception e) {
+		public void onSessionException(MediaSession session, final Exception e) {
 			log.error("Session exception", e);
 
 			runOnUiThread(new Runnable() {
