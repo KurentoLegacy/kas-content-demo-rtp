@@ -14,8 +14,6 @@
  */
 package com.kurento.apps.android.content.demo.rtp;
 
-import java.io.IOException;
-
 import javax.sdp.SdpException;
 
 import org.slf4j.Logger;
@@ -52,13 +50,30 @@ public class RtpSession extends MediaSession {
 	}
 
 	@Override
-	protected void startSync() {
+	protected void generateSdpOffer(Callback<String> callback) {
 		try {
-			nc.getSdpPortManager().addListener(generateOfferListener);
+			nc.getSdpPortManager().addListener(
+					new GenerateOfferListener(callback));
 			nc.getSdpPortManager().generateSdpOffer();
 		} catch (MsControlException e) {
 			log.error("Cannot start", e);
-			sessionExceptionHandler.onSessionException(RtpSession.this, e);
+			callback.onError(e);
+		}
+	}
+
+	@Override
+	protected void processSdpAnswer(Callback<Void> callback, String sdpAnswer) {
+		try {
+			nc.getSdpPortManager().addListener(
+					new ProcessAnswerListener(callback));
+			nc.getSdpPortManager().processSdpAnswer(
+					SdpConversor.sdp2SessionSpec(sdpAnswer));
+		} catch (SdpException e) {
+			log.error("error: " + e.getMessage(), e);
+			callback.onError(e);
+		} catch (MsControlException e) {
+			log.error("error: " + e.getMessage(), e);
+			callback.onError(e);
 		}
 	}
 
@@ -67,34 +82,23 @@ public class RtpSession extends MediaSession {
 		nc.release();
 	}
 
-	@Override
-	protected void processSdpAnswer(String sdpAnswer) {
-		try {
-			nc.getSdpPortManager().addListener(processAnswerListener);
-			nc.getSdpPortManager().processSdpAnswer(
-					SdpConversor.sdp2SessionSpec(sdpAnswer));
-		} catch (SdpException e) {
-			log.error("error: " + e.getMessage(), e);
-			terminate();
-			sessionExceptionHandler.onSessionException(this, e);
-		} catch (MsControlException e) {
-			log.error("error: " + e.getMessage(), e);
-			terminate();
-			sessionExceptionHandler.onSessionException(this, e);
-		}
-	}
+	private class GenerateOfferListener implements
+			MediaEventListener<SdpPortManagerEvent> {
 
-	private MediaEventListener<SdpPortManagerEvent> generateOfferListener = new MediaEventListener<SdpPortManagerEvent>() {
+		private Callback<String> callback;
+
+		GenerateOfferListener(Callback<String> callback) {
+			this.callback = callback;
+		}
+
 		@Override
 		public void onEvent(SdpPortManagerEvent event) {
 			event.getSource().removeListener(this);
 
 			MediaErr error = event.getError();
 			if (!MediaErr.NO_ERROR.equals(error)) {
-				terminate();
-				sessionExceptionHandler.onSessionException(RtpSession.this,
-						new MsControlException("Cannot generate offer. "
-								+ error));
+				callback.onError(new MsControlException(
+						"Cannot generate offer. " + error));
 				return;
 			}
 
@@ -105,34 +109,33 @@ public class RtpSession extends MediaSession {
 					String sdpOffer = SdpConversor.sessionSpec2Sdp(event
 							.getMediaServerSdp());
 					log.debug("generated SDP: " + sdpOffer);
-					sendRpcStart(sdpOffer);
+					callback.onSuccess(sdpOffer);
 				} catch (SdpException e) {
 					log.error("error: " + e.getMessage(), e);
-					terminate();
-					sessionExceptionHandler.onSessionException(RtpSession.this,
-							e);
-				} catch (IOException e) {
-					log.error("error: " + e.getMessage(), e);
-					terminate();
-					sessionExceptionHandler.onSessionException(RtpSession.this,
-							e);
+					callback.onError(e);
 				}
 			}
 
 		}
-	};
+	}
 
-	private MediaEventListener<SdpPortManagerEvent> processAnswerListener = new MediaEventListener<SdpPortManagerEvent>() {
+	private class ProcessAnswerListener implements
+			MediaEventListener<SdpPortManagerEvent> {
+
+		private Callback<Void> callback;
+
+		ProcessAnswerListener(Callback<Void> callback) {
+			this.callback = callback;
+		}
+
 		@Override
 		public void onEvent(SdpPortManagerEvent event) {
 			event.getSource().removeListener(this);
 
 			MediaErr error = event.getError();
 			if (!MediaErr.NO_ERROR.equals(error)) {
-				terminate();
-				sessionExceptionHandler.onSessionException(RtpSession.this,
-						new MsControlException("Cannot generate offer. "
-								+ error));
+				callback.onError(new MsControlException(
+						"Cannot generate offer. " + error));
 				return;
 			}
 
@@ -145,8 +148,7 @@ public class RtpSession extends MediaSession {
 							return;
 						}
 						nc.confirm();
-						sessionEstablishedHandler
-								.onEstablishedSession(RtpSession.this);
+						callback.onSuccess(null);
 					}
 
 					SessionSpec localSdp = nc.getSdpPortManager()
@@ -159,22 +161,16 @@ public class RtpSession extends MediaSession {
 							+ SdpConversor.sessionSpec2Sdp(remoteSdp));
 				} catch (SdpException e) {
 					log.error("error: " + e.getMessage(), e);
-					terminate();
-					sessionExceptionHandler.onSessionException(RtpSession.this,
-							e);
+					callback.onError(e);
 				} catch (MsControlException e) {
 					log.error("Error confirming nc");
-					terminate();
-					sessionExceptionHandler.onSessionException(RtpSession.this,
-							e);
+					callback.onError(e);
 				}
 			} else {
 				log.warn("Event received: " + eventType);
-				terminate();
-				sessionExceptionHandler.onSessionException(RtpSession.this,
-						new MsControlException("Cannot process answer"));
+				callback.onError(new MsControlException("Cannot process answer"));
 			}
 		}
-	};
+	}
 
 }

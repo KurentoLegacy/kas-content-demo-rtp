@@ -33,18 +33,24 @@ public abstract class MediaSession {
 		public void onEstablishedSession(MediaSession session);
 	}
 
-	private String uuid;
-	private String sessionId = null;
-	protected boolean request2Terminate = false;
+	protected interface Callback<T> {
+		void onSuccess(T result);
+
+		void onError(Exception e);
+	}
 
 	private final Context context;
+
+	private String uuid;
+	private String sessionId = null;
+	protected boolean request2Terminate = false; // TODO: this must be private
 
 	private String serverAddres;
 	private int serverPort;
 	private String demoUrl;
 
-	protected SessionExceptionHandler sessionExceptionHandler;
-	protected SessionEstablishedHandler sessionEstablishedHandler;
+	private SessionExceptionHandler sessionExceptionHandler;
+	private SessionEstablishedHandler sessionEstablishedHandler;
 
 	private final LooperThread looperThread = new LooperThread();
 	private static final AtomicInteger sequenceNumber = new AtomicInteger(0);
@@ -58,7 +64,6 @@ public abstract class MediaSession {
 		uuid = UUID.randomUUID().toString();
 
 		createDefaultHandlers();
-		looperThread.start();
 	}
 
 	public void setSessionEstablishedHandler(
@@ -71,67 +76,79 @@ public abstract class MediaSession {
 		this.sessionExceptionHandler = sessionExceptionHandler;
 	}
 
-	public String getUuid() {
-		return uuid;
-	}
-
-	public synchronized String getSessionId() {
+	private synchronized String getSessionId() {
 		return sessionId;
 	}
 
-	public synchronized void setSessionId(String sessionId) {
+	private synchronized void setSessionId(String sessionId) {
 		this.sessionId = sessionId;
 	}
 
-	protected abstract void startSync();
+	protected abstract void generateSdpOffer(Callback<String> callback);
 
 	public void start() {
+		looperThread.start();
 		looperThread.post(new Runnable() {
 			@Override
 			public void run() {
-				startSync();
+				generateSdpOffer(new Callback<String>() {
+					@Override
+					public void onSuccess(String offer) {
+						try {
+							sendRpcStart(offer);
+						} catch (IOException e) {
+							log.error("error: " + e.getMessage(), e);
+							terminate();
+							sessionExceptionHandler.onSessionException(
+									MediaSession.this, e);
+						}
+					}
+
+					@Override
+					public void onError(Exception e) {
+						log.error("error: " + e.getMessage(), e);
+						terminate();
+						sessionExceptionHandler.onSessionException(
+								MediaSession.this, e);
+					}
+				});
 			}
 		});
 	}
 
 	protected abstract void releaseMedia();
 
-	private void terminateSync() {
-		releaseMedia();
+	private synchronized void terminateSync() {
+		request2Terminate = true;
+		if (sessionId == null) {
+			log.info("The session with " + uuid + " is not stablished yet");
+			return;
+		}
 
-		synchronized (this) {
-			request2Terminate = true;
-			if (sessionId == null) {
-				log.info("The session with " + uuid + " is not stablished yet");
-				return;
-			}
+		JsonRpcRequest req = JsonRpcRequest.newTerminateRequest(0,
+				"Terminate RTP session", sessionId,
+				sequenceNumber.getAndIncrement());
 
-			try {
-				JsonRpcRequest req = JsonRpcRequest.newTerminateRequest(0,
-						"Terminate RTP session", sessionId,
-						sequenceNumber.getAndIncrement());
-				URL url = new URL(
-						context.getString(R.string.preference_server_standard_protocol_default),
-						serverAddres, serverPort, demoUrl);
-				AsyncJsonRpcClient.sendRequest(url, req,
-						new JsonRpcRequestHandler() {
+		try {
+			URL url = new URL(
+					context.getString(R.string.preference_server_standard_protocol_default),
+					serverAddres, serverPort, demoUrl);
 
-							@Override
-							public void onSuccess(JsonRpcResponse resp) {
-								log.debug("Terminate on success");
-							}
+			AsyncJsonRpcClient.sendRequest(url, req,
+					new JsonRpcRequestHandler() {
 
-							@Override
-							public void onError(Exception e) {
-								log.error("Exception sending request", e);
-							}
-						});
+						@Override
+						public void onSuccess(JsonRpcResponse resp) {
+							log.debug("Terminate on success");
+						}
 
-			} catch (IOException e) {
-				log.error("error: " + e.getMessage(), e);
-			}
-
-			looperThread.quit();
+						@Override
+						public void onError(Exception e) {
+							log.error("Exception sending request", e);
+						}
+					});
+		} catch (IOException e) {
+			log.error("error: " + e.getMessage(), e);
 		}
 	}
 
@@ -139,14 +156,17 @@ public abstract class MediaSession {
 		looperThread.post(new Runnable() {
 			@Override
 			public void run() {
+				releaseMedia();
 				terminateSync();
+				looperThread.quit();
 			}
 		});
 	}
 
-	protected abstract void processSdpAnswer(String sdpAnswer);
+	protected abstract void processSdpAnswer(Callback<Void> callback,
+			String sdpAnswer);
 
-	protected void sendRpcStart(String sdpOffer) throws IOException {
+	private void sendRpcStart(String sdpOffer) throws IOException {
 		JsonRpcRequest req = JsonRpcRequest.newStartRequest(sdpOffer,
 				new JsonRpcConstraints(Constraints.SENDRECV.toString(),
 						Constraints.INACTIVE.toString()), sequenceNumber
@@ -169,12 +189,26 @@ public abstract class MediaSession {
 				}
 
 				JsonRpcResponseResult result = resp.getResponseResult();
-				String sdpAnswer = result.getSdp();
-				log.debug("SDP answer: " + sdpAnswer);
 				setSessionId(result.getSessionId());
 				log.debug("Session ID: " + getSessionId());
 
-				processSdpAnswer(sdpAnswer);
+				String sdpAnswer = result.getSdp();
+				log.debug("SDP answer: " + sdpAnswer);
+				processSdpAnswer(new Callback<Void>() {
+					@Override
+					public void onSuccess(Void result) {
+						sessionEstablishedHandler
+								.onEstablishedSession(MediaSession.this);
+					}
+
+					@Override
+					public void onError(Exception e) {
+						log.error("error: " + e.getMessage(), e);
+						terminate();
+						sessionExceptionHandler.onSessionException(
+								MediaSession.this, e);
+					}
+				}, sdpAnswer);
 			}
 
 			@Override
