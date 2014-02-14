@@ -44,9 +44,14 @@ public class Preferences extends PreferenceActivity {
 	private static final Logger log = LoggerFactory.getLogger(Preferences.class
 			.getSimpleName());
 
+	public enum RtcType {
+		RTP, WEBRTC;
+	}
+
 	// Preferences keys
 	public static final String SERVER_ADDRESS_KEY = "SERVER_ADDRESS_KEY";
 	public static final String SERVER_PORT_KEY = "SERVER_PORT_KEY";
+	public static final String RTC_TYPE_KEY = "RTC_TYPE_KEY";
 	public static final String DEMOS_LIST_KEY = "DEMOS_LIST_KEY";
 	public static final String CUSTOM_DEMOS_SET_KEY = "CUSTOM_DEMOS_SET_KEY";
 
@@ -91,6 +96,16 @@ public class Preferences extends PreferenceActivity {
 		serverPortText
 				.setDefaultValue(getString(R.string.preference_server_port_default));
 		root.addPreference(serverPortText);
+
+		CharSequence[] fixedMediaTypes = getResources().getStringArray(
+				R.array.preference_rtc_type_list);
+		ListPreference rtcTypeList = new ListPreference(this);
+		rtcTypeList.setKey(RTC_TYPE_KEY);
+		rtcTypeList.setTitle(getString(R.string.preference_rtc_type));
+		rtcTypeList.setEntries(fixedMediaTypes);
+		rtcTypeList.setEntryValues(fixedMediaTypes);
+		rtcTypeList.setDefaultValue(fixedMediaTypes[0].toString());
+		root.addPreference(rtcTypeList);
 
 		root.addPreference(buildDemoSelector());
 
@@ -230,6 +245,20 @@ public class Preferences extends PreferenceActivity {
 		}
 
 		return Integer.parseInt(port);
+	}
+
+	public static RtcType getMediaType(Context context) {
+		SharedPreferences pref = PreferenceManager
+				.getDefaultSharedPreferences(context);
+
+		String value = pref.getString(RTC_TYPE_KEY,
+				context.getString(R.string.preference_rtc_type_default));
+		if (context.getString(R.string.preference_rtc_type_webrtc)
+				.equals(value)) {
+			return RtcType.WEBRTC;
+		}
+
+		return RtcType.RTP;
 	}
 
 	public static String getDemoUrl(Context context) {

@@ -7,5 +7,6 @@
     <string name="preference_server_port_default">8080</string>
 
     <string name="preference_url_demo_default">@string/url_campus_party_rtp_zbar</string>
+    <string name="preference_rtc_type_default">@string/preference_rtc_type_rtp</string>
 
 </resources>

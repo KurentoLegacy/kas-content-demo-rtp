@@ -22,6 +22,7 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.webrtc.PeerConnectionFactory;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -46,9 +47,11 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 
 import com.kurento.apps.android.content.demo.rtp.MediaSession.SessionEstablishedHandler;
 import com.kurento.apps.android.content.demo.rtp.MediaSession.SessionExceptionHandler;
+import com.kurento.apps.android.content.demo.rtp.Preferences.RtcType;
 import com.kurento.apps.android.content.demo.rtp.hider.SystemUiHider;
 import com.kurento.apps.android.content.demo.rtp.hider.SystemUiHiderBase;
 import com.kurento.commons.config.Parameters;
@@ -123,6 +126,8 @@ public class MainActivity extends Activity {
 		mWakeLock = pm.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK, "screen");
 
 		createTheMagic();
+
+		PeerConnectionFactory.initializeAndroidGlobals(this);
 	}
 
 	@Override
@@ -139,30 +144,34 @@ public class MainActivity extends Activity {
 	}
 
 	public void startSession(View v) {
-		try {
-			session = new RtpSession(this, mediaSession);
-			session.setSessionEstablishedHandler(sessionEstablishedHandler);
-			session.setSessionExceptionHandler(sessionExceptionHandler);
-			session.start();
-			findViewById(R.id.main_button_start_session).setEnabled(false);
-			findViewById(R.id.main_button_start_session).setVisibility(
-					View.GONE);
-			findViewById(R.id.main_button_terminate_session).setEnabled(true);
-			findViewById(R.id.main_button_terminate_session).setVisibility(
-					View.VISIBLE);
-			findViewById(R.id.progressBar1).setVisibility(View.VISIBLE);
-
-			Animation myFadeInAnimation = AnimationUtils.loadAnimation(
-					getApplicationContext(), R.anim.make_it_big);
-			myFadeInAnimation.setFillAfter(true);
-			((FrameLayout) findViewById(R.id.main_background_layout))
-					.setBackgroundColor(Color.WHITE);
-			((ImageView) findViewById(R.id.theater_layout))
-					.startAnimation(myFadeInAnimation);
-
-		} catch (MsControlException e) {
-			log.error("Cannot start", e);
+		if (RtcType.WEBRTC.equals(Preferences.getMediaType(this))) {
+			session = new WebRtcSession(this);
+		} else {
+			try {
+				session = new RtpSession(this, mediaSession);
+			} catch (MsControlException e) {
+				log.error("Cannot start", e);
+				return;
+			}
 		}
+
+		session.setSessionEstablishedHandler(sessionEstablishedHandler);
+		session.setSessionExceptionHandler(sessionExceptionHandler);
+		session.start();
+		findViewById(R.id.main_button_start_session).setEnabled(false);
+		findViewById(R.id.main_button_start_session).setVisibility(View.GONE);
+		findViewById(R.id.main_button_terminate_session).setEnabled(true);
+		findViewById(R.id.main_button_terminate_session).setVisibility(
+				View.VISIBLE);
+		findViewById(R.id.progressBar1).setVisibility(View.VISIBLE);
+
+		Animation myFadeInAnimation = AnimationUtils.loadAnimation(
+				getApplicationContext(), R.anim.make_it_big);
+		myFadeInAnimation.setFillAfter(true);
+		((FrameLayout) findViewById(R.id.main_background_layout))
+				.setBackgroundColor(Color.WHITE);
+		((ImageView) findViewById(R.id.theater_layout))
+				.startAnimation(myFadeInAnimation);
 	}
 
 	public void terminateSession(View v) {
@@ -319,6 +328,14 @@ public class MainActivity extends Activity {
 		}
 	}
 
+	private void initWebRtcMedia(WebRtcSession session) {
+		LinearLayout localView = (LinearLayout) findViewById(R.id.video_capture_surface_container);
+		LinearLayout remoteView = (LinearLayout) findViewById(R.id.video_receive_surface_container);
+
+		session.setRemoteDisplay(remoteView);
+		session.setLocalDisplay(localView);
+	}
+
 	private class SessionEstablishedHandlerImpl implements
 			SessionEstablishedHandler {
 		@Override
@@ -328,10 +345,12 @@ public class MainActivity extends Activity {
 				public void run() {
 					findViewById(R.id.progressBar1).setVisibility(View.GONE);
 					((FrameLayout) findViewById(R.id.main_background_layout))
-							.setBackgroundColor(Color.BLACK);
+							.setBackgroundColor(Color.TRANSPARENT);
 					// TODO: improve
 					if (session instanceof RtpSession) {
 						initRtpMedia((RtpSession) session);
+					} else if (session instanceof WebRtcSession) {
+						initWebRtcMedia((WebRtcSession) session);
 					} else {
 						log.warn("Media not provided");
 					}
