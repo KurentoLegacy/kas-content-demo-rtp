@@ -22,6 +22,7 @@
 		<slf4j-android.version>1.6.1-RC1</slf4j-android.version>
 		<kmf-content-protocol.version>3.0.5</kmf-content-protocol.version>
 		<kas-mscontrol.version>1.1.5-SNAPSHOT</kas-mscontrol.version>
+		<webrtc.version>r5552</webrtc.version>
 		<jain-sip-ri.version>1.2.76</jain-sip-ri.version>
 
 		<!-- Plugins Versions -->
@@ -92,6 +93,18 @@
 			<groupId>com.kurento.kas</groupId>
 			<artifactId>kas-mscontrol</artifactId>
 			<version>${kas-mscontrol.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.kurento.kands</groupId>
+			<artifactId>libjingle_peerconnection</artifactId>
+			<version>${webrtc.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.kurento.kands</groupId>
+			<artifactId>libjingle_peerconnection_so</artifactId>
+			<version>${webrtc.version}</version>
+			<classifier>armeabi</classifier>
+			<type>so</type>
 		</dependency>
 
 		<!-- It's necessary because kc-mediaspec had it as provided -->
