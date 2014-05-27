@@ -22,7 +22,6 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.webrtc.PeerConnectionFactory;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -127,7 +126,7 @@ public class MainActivity extends Activity {
 
 		createTheMagic();
 
-		PeerConnectionFactory.initializeAndroidGlobals(this);
+		WebRtcSession.initWebRtc(this);
 	}
 
 	@Override

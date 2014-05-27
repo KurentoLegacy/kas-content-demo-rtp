@@ -1,3 +1,17 @@
+/*
+ * (C) Copyright 2014 Kurento (http://kurento.org/)
+ *
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the GNU Lesser General Public License
+ * (LGPL) version 2.1 which accompanies this distribution, and is available at
+ * http://www.gnu.org/licenses/lgpl-2.1.html
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details.
+ *
+ */
 package com.kurento.apps.android.content.demo.rtp;
 
 import java.util.ArrayList;
@@ -19,7 +33,6 @@ import org.webrtc.PeerConnection.SignalingState;
 import org.webrtc.PeerConnectionFactory;
 import org.webrtc.SdpObserver;
 import org.webrtc.SessionDescription;
-import org.webrtc.VideoCapturer;
 import org.webrtc.VideoRenderer;
 import org.webrtc.VideoRenderer.I420Frame;
 import org.webrtc.VideoSource;
@@ -37,197 +50,62 @@ public class WebRtcSession extends MediaSession {
 	private static final Logger log = LoggerFactory
 			.getLogger(WebRtcSession.class.getSimpleName());
 
+	static final LooperThread webRtcLT = new LooperThread();
+
+	static {
+		webRtcLT.start();
+	}
+
+	private static boolean initiated = false;
+
+	public static synchronized void initWebRtc(final Context context) {
+		if (initiated) {
+			return;
+		}
+
+		webRtcLT.post(new Runnable() {
+			@Override
+			public void run() {
+				PeerConnectionFactory.initializeAndroidGlobals(context
+						.getApplicationContext());
+			}
+		});
+
+		initiated = true;
+	}
+
 	private static final String DEFAULT_STUN_ADDRESS = "stun.l.google.com";
 	private static final int DEFAULT_STUN_PORT = 19302;
 	private static final String DEFAULT_STUN_PASSWORD = "";
 
-	/*
-	 * This looper is used to manage the peerconnection always in the same
-	 * thread to avoid internal problems.
-	 */
-	private final LooperThread pcLooperThread = new LooperThread();
-
-	private PeerConnectionFactory peerConnectionFactory;
 	private PeerConnection peerConnection;
-	private VideoCapturer capturer;
-	private VideoSource videoSource;
 	private MediaStream localStream;
 	private MediaStream remoteStream;
 
-	WebRtcSession(Context context) {
-		super(context);
-	}
+	private PeerConnectionObserver peerConnectionObserver = new PeerConnectionObserver();
 
-	private synchronized MediaStream getLocalStream() {
-		return localStream;
-	}
+	public WebRtcSession(Context ctx) {
+		super(ctx);
 
-	private synchronized MediaStream getRemoteStream() {
-		return remoteStream;
-	}
-
-	public synchronized void setRemoteStream(MediaStream remoteStream) {
-		if (peerConnection != null) {
-			this.remoteStream = remoteStream;
-		}
-	}
-
-	private synchronized String getLocalDescriptionPCSync() {
-		if (peerConnection == null) {
-			return null;
-		}
-
-		return peerConnection.getLocalDescription().description;
+		webRtcLT.post(new Runnable() {
+			@Override
+			public void run() {
+				startSync();
+			}
+		});
 	}
 
 	public void setLocalDisplay(ViewGroup viewGroup) {
-		setDisplay(viewGroup, getLocalStream());
+		setDisplay(viewGroup, localStream);
 	}
 
 	public void setRemoteDisplay(ViewGroup viewGroup) {
-		setDisplay(viewGroup, getRemoteStream());
+		setDisplay(viewGroup, remoteStream);
 	}
 
-	private synchronized void generateSdpOfferPCSync(
-			final Callback<String> callback) {
-		MediaConstraints constraints = new MediaConstraints();
-
-		constraints.mandatory.add(new MediaConstraints.KeyValuePair(
-				"OfferToReceiveAudio", "true"));
-		constraints.mandatory.add(new MediaConstraints.KeyValuePair(
-				"OfferToReceiveVideo", "true"));
-
-		peerConnection.createOffer(new SdpObserver() {
-
-			@Override
-			public void onCreateFailure(String error) {
-				log.error("createOffer onCreateFailure: " + error);
-				callback.onError(new Exception(error));
-			}
-
-			@Override
-			public void onCreateSuccess(SessionDescription sdp) {
-				log.debug("createOffer onSuccess");
-				peerConnection.setLocalDescription(new SdpObserver() {
-					@Override
-					public void onCreateFailure(String error) {
-						// Nothing to do
-					}
-
-					@Override
-					public void onCreateSuccess(SessionDescription sdp) {
-						// Nothing to do
-					}
-
-					@Override
-					public void onSetFailure(String error) {
-						log.error("setLocalDescription onFailure: " + error);
-						callback.onError(new Exception(error));
-					}
-
-					@Override
-					public void onSetSuccess() {
-						log.debug("setLocalDescription onSuccess");
-					}
-				}, sdp);
-			}
-
-			@Override
-			public void onSetFailure(String error) {
-				// Nothing to do
-			}
-
-			@Override
-			public void onSetSuccess() {
-				// Nothing to do
-			}
-		}, constraints);
-	}
-
-	@Override
-	protected void generateSdpOffer(final Callback<String> callback) {
-		pcLooperThread.start();
-		pcLooperThread.post(new Runnable() {
-			@Override
-			public void run() {
-				createPeerConnectionPCSync(callback);
-				generateSdpOfferPCSync(callback);
-			}
-		});
-	}
-
-	@Override
-	protected void processSdpAnswer(final Callback<Void> callback,
-			String sdpAnswer) {
-		final SessionDescription sdp = new SessionDescription(
-				SessionDescription.Type.ANSWER, sdpAnswer);
-
-		pcLooperThread.post(new Runnable() {
-			@Override
-			public void run() {
-				peerConnection.setRemoteDescription(new SdpObserver() {
-					@Override
-					public void onCreateFailure(String error) {
-						// Nothing to do
-					}
-
-					@Override
-					public void onCreateSuccess(SessionDescription sdp) {
-						// Nothing to do
-					}
-
-					@Override
-					public void onSetFailure(String error) {
-						log.error("setRemoteDescription onFailure: " + error);
-						callback.onError(new Exception(error));
-					}
-
-					@Override
-					public void onSetSuccess() {
-						log.debug("setRemoteDescription onSuccess");
-						callback.onSuccess(null);
-					}
-				}, sdp);
-			}
-		});
-	}
-
-	@Override
-	protected void releaseMedia() {
-		pcLooperThread.post(new Runnable() {
-			@Override
-			public void run() {
-				if (peerConnection != null) {
-					peerConnection.close();
-					peerConnection.dispose();
-					peerConnection = null;
-					localStream = null;
-					remoteStream = null;
-				}
-
-				if (capturer != null) {
-					capturer.dispose();
-					capturer = null;
-				}
-
-				if (videoSource != null) {
-					videoSource.stop();
-					videoSource.dispose();
-					videoSource = null;
-				}
-
-				if (peerConnectionFactory != null) {
-					peerConnectionFactory.dispose();
-					peerConnectionFactory = null;
-				}
-				// pcLooperThread.quit(); // FIXME: fails when detach thread
-			}
-		});
-	}
-
-	private synchronized void createPeerConnectionPCSync(
-			Callback<String> callback) {
-		peerConnectionFactory = new PeerConnectionFactory();
+	private void startSync() {
+		PeerConnectionFactory pcf = PeerConnectionFactorySingleton
+				.getInstance();
 
 		StringBuilder stunAddress = new StringBuilder();
 		stunAddress.append("stun:").append(DEFAULT_STUN_ADDRESS).append(":")
@@ -244,38 +122,273 @@ public class WebRtcSession extends MediaSession {
 		constraints.optional.add(new KeyValuePair("DtlsSrtpKeyAgreement",
 				"true"));
 
-		peerConnection = peerConnectionFactory.createPeerConnection(iceServers,
-				constraints, new PeerConnectionObserver(callback));
+		peerConnection = pcf.createPeerConnection(iceServers, constraints,
+				peerConnectionObserver);
 
-		localStream = peerConnectionFactory
-				.createLocalMediaStream("MediaStream0");
+		localStream = pcf.createLocalMediaStream("MediaStream0");
 
-		AudioSource audioSource = peerConnectionFactory
-				.createAudioSource(new MediaConstraints());
-		AudioTrack audioTrack = peerConnectionFactory.createAudioTrack(
-				"AudioTrack0", audioSource);
+		AudioSource as = PeerConnectionFactorySingleton.createAudioSource();
+		AudioTrack audioTrack = pcf.createAudioTrack("AudioTrack0", as);
 		localStream.addTrack(audioTrack);
 
-		log.debug("Create back camera");
-		capturer = VideoCapturer
-				.create("Camera 0, Facing back, Orientation 90");
+		VideoSource vs = PeerConnectionFactorySingleton.getVideoSource();
+		VideoTrack videoTrack = pcf.createVideoTrack("VideoTrack0", vs);
+		localStream.addTrack(videoTrack);
 
-		if (capturer != null) {
-			videoSource = peerConnectionFactory.createVideoSource(capturer,
-					new MediaConstraints());
-			VideoTrack videoTrack = peerConnectionFactory.createVideoTrack(
-					"VideoTrack0", videoSource);
-			localStream.addTrack(videoTrack);
-		}
 		peerConnection.addStream(localStream, new MediaConstraints());
+	}
+
+	private void releaseMediaSync() {
+		if (peerConnection != null) {
+			peerConnection.close();
+			peerConnection.dispose();
+			peerConnection = null;
+			localStream = null;
+		}
+
+		PeerConnectionFactorySingleton.disposeVideoSource();
+	}
+
+	@Override
+	public void releaseMedia() {
+		webRtcLT.post(new Runnable() {
+			@Override
+			public void run() {
+				releaseMediaSync();
+			}
+		});
+	}
+
+	private void pcSetLocalDescriptionSync(SessionDescription sdp,
+			final Callback<String> callback) {
+		if (peerConnection == null) {
+			log.error("PeerConnection is null. Cannot set local description");
+			return;
+		}
+
+		peerConnection.setLocalDescription(new SdpObserver() {
+			@Override
+			public void onCreateFailure(String error) {
+				// Nothing to do
+			}
+
+			@Override
+			public void onCreateSuccess(SessionDescription sdp) {
+				// Nothing to do
+			}
+
+			@Override
+			public void onSetFailure(String error) {
+				log.debug("setLocalDescription onFailure: " + error);
+				callback.onError(new Exception(error));
+			}
+
+			@Override
+			public void onSetSuccess() {
+				log.debug("setLocalDescription onSuccess");
+			}
+		}, sdp);
+	}
+
+	private void createSdpOfferSync(final Callback<String> callback) {
+		if (peerConnection == null) {
+			log.error("PeerConnection is null. Cannot create offer");
+			return;
+		}
+
+		MediaConstraints constraints = new MediaConstraints();
+
+		constraints.mandatory.add(new MediaConstraints.KeyValuePair(
+				"OfferToReceiveAudio", "true"));
+		constraints.mandatory.add(new MediaConstraints.KeyValuePair(
+				"OfferToReceiveVideo", "true"));
+
+		peerConnectionObserver.setSdpCallback(callback);
+		peerConnection.createOffer(new SdpObserver() {
+			@Override
+			public void onCreateFailure(String error) {
+				log.error("createOffer onCreateFailure: " + error);
+				callback.onError(new Exception(error));
+			}
+
+			@Override
+			public void onCreateSuccess(final SessionDescription sdp) {
+				log.debug("createOffer onSuccess");
+				webRtcLT.post(new Runnable() {
+					@Override
+					public void run() {
+						pcSetLocalDescriptionSync(sdp, callback);
+					}
+				});
+			}
+
+			@Override
+			public void onSetFailure(String error) {
+				// Nothing to do
+			}
+
+			@Override
+			public void onSetSuccess() {
+				// Nothing to do
+			}
+		}, constraints);
+	}
+
+	@Override
+	public void generateSdpOffer(final Callback<String> callback) {
+		webRtcLT.post(new Runnable() {
+			@Override
+			public void run() {
+				createSdpOfferSync(callback);
+			}
+		});
+	}
+
+	private void pcCreateAnswerSync(final Callback<String> callback) {
+		if (peerConnection == null) {
+			log.error("PeerConnection is null. Cannot create answer");
+			return;
+		}
+
+		MediaConstraints constraints = new MediaConstraints();
+		peerConnection.createAnswer(new SdpObserver() {
+			@Override
+			public void onCreateFailure(String error) {
+				log.debug("createAnswer onFailure: " + error);
+				callback.onError(new Exception(error));
+			}
+
+			@Override
+			public void onCreateSuccess(final SessionDescription sdp) {
+				log.debug("createAnswer onSuccess");
+				webRtcLT.post(new Runnable() {
+					@Override
+					public void run() {
+						pcSetLocalDescriptionSync(sdp, callback);
+					}
+				});
+			}
+
+			@Override
+			public void onSetFailure(String error) {
+				// Nothing to do
+			}
+
+			@Override
+			public void onSetSuccess() {
+				// Nothing to do
+			}
+		}, constraints);
+	}
+
+	private void createSdpAnswerSync(String sdpOffer,
+			final Callback<String> callback) {
+		if (peerConnection == null) {
+			log.error("PeerConnection is null. Cannot create answer");
+			return;
+		}
+
+		final SessionDescription sdp = new SessionDescription(
+				SessionDescription.Type.OFFER, sdpOffer);
+
+		// FIXME
+		peerConnectionObserver.setSdpCallback(callback);
+		peerConnection.setRemoteDescription(new SdpObserver() {
+			@Override
+			public void onCreateFailure(String error) {
+				// Nothing to do
+			}
+
+			@Override
+			public void onCreateSuccess(SessionDescription sdp) {
+				// Nothing to do
+			}
+
+			@Override
+			public void onSetFailure(String error) {
+				log.error("setRemoteDescription onFailure: " + error);
+				callback.onError(new Exception(error));
+			}
+
+			@Override
+			public void onSetSuccess() {
+				log.debug("setRemoteDescription onSuccess");
+				webRtcLT.post(new Runnable() {
+					@Override
+					public void run() {
+						pcCreateAnswerSync(callback);
+					}
+				});
+			}
+		}, sdp);
+	}
+
+	public void createSdpAnswer(final String sdpOffer,
+			final Callback<String> callback) {
+		webRtcLT.post(new Runnable() {
+			@Override
+			public void run() {
+				createSdpAnswerSync(sdpOffer, callback);
+			}
+		});
+	}
+
+	private void processSdpAnswerSync(String sdpAnswer,
+			final Callback<Void> callback) {
+		if (peerConnection == null) {
+			log.error("PeerConnection is null. Cannot process answer");
+			return;
+		}
+
+		final SessionDescription sdp = new SessionDescription(
+				SessionDescription.Type.ANSWER, sdpAnswer);
+
+		peerConnection.setRemoteDescription(new SdpObserver() {
+			@Override
+			public void onCreateFailure(String error) {
+				// Nothing to do
+			}
+
+			@Override
+			public void onCreateSuccess(SessionDescription sdp) {
+				// Nothing to do
+			}
+
+			@Override
+			public void onSetFailure(String error) {
+				log.error("setRemoteDescription onFailure: " + error);
+				callback.onError(new Exception(error));
+			}
+
+			@Override
+			public void onSetSuccess() {
+				log.debug("setRemoteDescription onSuccess");
+				callback.onSuccess(null);
+			}
+		}, sdp);
+	}
+
+	@Override
+	public void processSdpAnswer(final Callback<Void> callback,
+			final String sdpAnswer) {
+		webRtcLT.post(new Runnable() {
+			@Override
+			public void run() {
+				processSdpAnswerSync(sdpAnswer, callback);
+			}
+		});
 	}
 
 	private class PeerConnectionObserver implements PeerConnection.Observer {
 
-		private Callback<String> callback;
+		private Callback<String> sdpCalback;
 
-		PeerConnectionObserver(Callback<String> callback) {
-			this.callback = callback;
+		public synchronized Callback<String> getSdpCallback() {
+			return sdpCalback;
+		}
+
+		public synchronized void setSdpCallback(Callback<String> sdpCalback) {
+			this.sdpCalback = sdpCalback;
 		}
 
 		@Override
@@ -297,14 +410,33 @@ public class WebRtcSession extends MediaSession {
 		public void onIceGatheringChange(IceGatheringState newState) {
 			log.debug("peerConnection onIceGatheringChange: " + newState);
 			if (IceGatheringState.COMPLETE.equals(newState)) {
-				String localDescription = getLocalDescriptionPCSync();
-				if (localDescription != null) {
-					callback.onSuccess(localDescription);
-				} else {
-					String error = "Local SDP is null";
-					log.error(error);
-					callback.onError(new Exception(error));
-				}
+				webRtcLT.post(new Runnable() {
+					@Override
+					public void run() {
+						Callback<String> c = getSdpCallback();
+						if (c == null) {
+							log.error("There is not callback");
+							return;
+						}
+
+						if (peerConnection == null) {
+							String error = "PeerConnection is dispossed";
+							log.error(error);
+							c.onError(new Exception(error));
+							return;
+						}
+
+						String localDescription = peerConnection
+								.getLocalDescription().description;
+						if (localDescription != null) {
+							c.onSuccess(localDescription);
+						} else {
+							String error = "Local SDP is null";
+							log.error(error);
+							c.onError(new Exception(error));
+						}
+					}
+				});
 			}
 		}
 
@@ -331,7 +463,7 @@ public class WebRtcSession extends MediaSession {
 		@Override
 		public void onAddStream(MediaStream stream) {
 			log.debug("peerConnection onAddStream");
-			setRemoteStream(stream);
+			remoteStream = stream;
 		}
 	}
 
@@ -358,7 +490,7 @@ public class WebRtcSession extends MediaSession {
 
 	private static final int STREAM_ID = 10000;
 
-	private static synchronized VideoStreamView getVideoStreamViewFromActivity(
+	private static VideoStreamView getVideoStreamViewFromActivity(
 			Activity activity) {
 		VideoStreamView sv = null;
 		try {
